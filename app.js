@@ -1,11 +1,13 @@
 //jshint esversion:6
-require('dotenv').config()
+require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
 //const encrpyt = require('mongoose-encryption')
-const md5 = require('md5')
+//const md5 = require('md5')
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 const app = express();
 
 app.use(express.static("public"));
@@ -32,33 +34,39 @@ app.get("/", function (req, res) {
 app.get("/login", function (req, res) {
   res.render("login");
 });
-
 app.post("/login", function (req, res) {
-  User.findOne(
-    { email: req.body.username},
-    function (err, foundUser) {
-      if (!err && (foundUser.password == md5(req.body.password))) {
-        res.render("secrets");
-      } else {
-        console.log(err);
-      }
+  User.findOne({ email: req.body.username }, function (err, foundUser) {
+    if (!err && foundUser) {
+      bcrypt.compare(
+        req.body.password,
+        foundUser.password,
+        function (err, result) {
+          if (result == true) {
+            res.render("secrets");
+          }
+        }
+      );
+    } else {
+      console.log(err);
     }
-  );
+  });
 });
 app.get("/register", function (req, res) {
   res.render("register");
 });
 app.post("/register", function (req, res) {
-  const newUSer = new User({
-    email: req.body.username,
-    password: md5(req.body.password),
-  });
-  newUSer.save(function (err) {
-    if (!err) {
-      res.render("secrets");
-    } else {
-      console.log(err);
-    }
+  bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
+    const newUSer = new User({
+      email: req.body.username,
+      password: hash,
+    });
+    newUSer.save(function (err) {
+      if (!err) {
+        res.render("secrets");
+      } else {
+        console.log(err);
+      }
+    });
   });
 });
 
